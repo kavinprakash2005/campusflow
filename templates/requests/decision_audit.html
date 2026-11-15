@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}Audit history{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Decision audit history</h1><p>Every submission, review decision and assignment across the college. Remarks on confidential requests are hidden.</p></div></div>
+<div class="cf-card">
+  <form class="filter-bar" method="get" action="{{ url_for('reqs.decision_audit') }}">
+    <div class="f"><label for="action">Action</label><select class="form-select" id="action" name="action"><option value="">All</option>{% for a in ['submitted','approved','forwarded','rejected','returned','assigned'] %}<option value="{{ a }}" {{ 'selected' if args.get('action') == a }}>{{ a|title }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="dept">Department</label><select class="form-select" id="dept" name="dept"><option value="">All</option>{% for d in opts.depts %}<option value="{{ d.code }}" {{ 'selected' if args.get('dept') == d.code }}>{{ d.code }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="from">From</label><input class="form-control" type="date" id="from" name="from" value="{{ args.get('from','') }}"></div>
+    <div class="f"><label for="to">To</label><input class="form-control" type="date" id="to" name="to" value="{{ args.get('to','') }}"></div>
+    <div class="d-flex gap-2"><button class="btn btn-primary btn-sm">Filter</button><a class="btn btn-ghost btn-sm" href="{{ url_for('reqs.decision_audit') }}">Reset</a></div>
+  </form>
+  {% if rows %}
+  <div class="table-responsive"><table class="cf-table stack"><thead><tr><th>When</th><th>Request</th><th>Dept</th><th>Action</th><th>By</th><th>Remark</th></tr></thead><tbody>
+    {% for r in rows %}<tr>
+      <td class="sub num">{{ r.created_at|fdt }}</td>
+      <td data-label="Request">{% if r.routed %}<a class="uid" href="{{ url_for('reqs.detail', ref=r.rid) }}">{{ r.request_uid }}</a>{% else %}<span class="uid">{{ r.request_uid }}</span>{% endif %}<div class="sub">{{ r.type_name }}</div></td>
+      <td data-label="Dept">{{ r.dept_code or '—' }}</td>
+      <td data-label="Action"><span class="st st-{{ {'approved':'approved','forwarded':'approved','rejected':'rejected','returned':'returned'}.get(r.action,'pending') }}">{{ r.action|title }}</span></td>
+      <td data-label="By">{{ r.actor_name }}<div class="sub text-capitalize">{{ r.actor_role }}</div></td>
+      <td class="sub" data-label="Remark">{% if r.hide %}<span class="chip lock"><i class="bi bi-lock-fill"></i> Confidential</span>{% else %}{{ r.remark or '—' }}{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}{% call ui.empty('bi-shield-check', 'No audit entries match') %}{% endcall %}{% endif %}
+  {{ ui.pager(pg, 'reqs.decision_audit', args) }}
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Users</h1><p>Individual accounts for every student, faculty member, HOD, Principal and administrator.</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.user_form') }}"><i class="bi bi-person-plus me-1"></i> Add user</a></div>
+<div class="cf-card">
+  <form class="filter-bar" method="get">
+    <div class="f grow"><label for="q">Search</label><input class="form-control" id="q" name="q" value="{{ args.get('q','') }}" placeholder="Name, email or ID" maxlength="60"></div>
+    <div class="f"><label for="role">Role</label><select class="form-select" id="role" name="role"><option value="">All</option>{% for r in roles %}<option value="{{ r.code }}" {{ 'selected' if args.get('role') == r.code }}>{{ r.name }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="dept">Department</label><select class="form-select" id="dept" name="dept"><option value="">All</option>{% for d in depts %}<option value="{{ d.code }}" {{ 'selected' if args.get('dept') == d.code }}>{{ d.code }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="status">Status</label><select class="form-select" id="status" name="status"><option value="">All</option><option value="active" {{ 'selected' if args.get('status') == 'active' }}>Active</option><option value="inactive" {{ 'selected' if args.get('status') == 'inactive' }}>Inactive</option></select></div>
+    <div class="d-flex gap-2"><button class="btn btn-primary btn-sm">Filter</button><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">Reset</a></div>
+  </form>
+  <div class="table-responsive"><table class="cf-table stack"><thead><tr><th>User</th><th>ID</th><th>Role</th><th>Dept</th><th>Status</th><th>Last sign-in</th><th></th></tr></thead><tbody>
+  {% for u in rows %}<tr>
+    <td><div class="cell-flex">{{ ui.avatar(u.full_name, 'sm') }}<div><div class="main">{{ u.full_name }}</div><div class="sub">{{ u.email }}</div></div></div></td>
+    <td data-label="ID">{{ u.college_id }}</td><td data-label="Role"><span class="chip indigo">{{ u.role_name }}</span></td><td data-label="Dept">{{ u.dept_code or '—' }}</td>
+    <td data-label="Status">{% if u.locked %}<span class="chip lock"><i class="bi bi-lock-fill"></i> Locked</span>{% elif u.is_active %}<span class="st st-approved">Active</span>{% else %}<span class="st st-cancelled">Inactive</span>{% endif %}</td>
+    <td class="sub" data-label="Last sign-in">{{ u.last_login|fdt }}</td>
+    <td class="text-end text-nowrap"><a class="btn btn-sm btn-soft" href="{{ url_for('admin.user_form', uid=u.id) }}">Edit</a>
+      {% if u.locked %}<form class="d-inline" method="post" action="{{ url_for('admin.user_unlock', uid=u.id) }}">{{ ui.csrf() }}<button class="btn btn-sm btn-ghost">Unlock</button></form>{% endif %}
+      {% if u.id != g.user.id %}<form class="d-inline" method="post" action="{{ url_for('admin.user_toggle', uid=u.id) }}" data-confirm="{{ 'Deactivate' if u.is_active else 'Activate' }} {{ u.full_name }}?">{{ ui.csrf() }}<button class="btn btn-sm btn-ghost">{{ 'Deactivate' if u.is_active else 'Activate' }}</button></form>{% endif %}</td>
+  </tr>{% else %}<tr><td colspan="7">{% call ui.empty('bi-people', 'No users found') %}{% endcall %}</td></tr>{% endfor %}</tbody></table></div>
+  {{ ui.pager(pg, 'admin.users', args) }}
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}Departments{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Departments</h1><p>Each department's HOD reviews its requests.</p></div></div>
+<div class="row g-4">
+  <div class="col-lg-8"><div class="cf-card"><div class="table-responsive"><table class="cf-table stack"><thead><tr><th>Code</th><th>Name</th><th>HOD</th><th class="text-end">Users</th><th class="text-end">Requests</th><th></th></tr></thead><tbody>
+  {% for d in rows %}<tr>
+    {% if edit_id|string == d.id|string %}
+    <td colspan="6"><form class="row g-2 align-items-end" method="post" action="{{ url_for('admin.departments') }}">{{ ui.csrf() }}<input type="hidden" name="id" value="{{ d.id }}">
+      <div class="col-sm-3"><input class="form-control" name="code" value="{{ d.code }}" maxlength="10" required aria-label="Code"></div><div class="col-sm-6"><input class="form-control" name="name" value="{{ d.name }}" maxlength="120" required aria-label="Name"></div>
+      <div class="col-sm-3 d-flex gap-2"><button class="btn btn-primary btn-sm">Save</button><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.departments') }}">Cancel</a></div></form></td>
+    {% else %}
+    <td class="main">{{ d.code }}</td><td data-label="Name">{{ d.name }}{% if not d.is_active %} <span class="st st-cancelled ms-1">Inactive</span>{% endif %}</td><td data-label="HOD">{{ d.hod_name or '—' }}</td>
+    <td class="num text-end" data-label="Users">{{ d.users_n }}</td><td class="num text-end" data-label="Requests">{{ d.requests_n }}</td>
+    <td class="text-end text-nowrap"><a class="btn btn-sm btn-soft" href="{{ url_for('admin.departments', edit=d.id) }}">Edit</a>
+      <form class="d-inline" method="post" action="{{ url_for('admin.department_toggle', did=d.id) }}">{{ ui.csrf() }}<button class="btn btn-sm btn-ghost">{{ 'Deactivate' if d.is_active else 'Activate' }}</button></form></td>
+    {% endif %}</tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-lg-4"><form class="cf-card" method="post" action="{{ url_for('admin.departments') }}"><div class="card-head"><h3>Add department</h3></div>{{ ui.csrf() }}
+    <div class="card-body"><div class="mb-3"><label class="form-label req" for="code">Code</label><input class="form-control {{ 'is-invalid' if errors.code }}" id="code" name="code" maxlength="10" required placeholder="e.g. IT" value="{{ values.get('code','') if not values.get('id') else '' }}">{{ ui.field_error(errors,'code') }}</div>
+      <div class="mb-3"><label class="form-label req" for="name">Name</label><input class="form-control {{ 'is-invalid' if errors.name }}" id="name" name="name" maxlength="120" required placeholder="Information Technology" value="{{ values.get('name','') if not values.get('id') else '' }}">{{ ui.field_error(errors,'name') }}</div>
+      <button class="btn btn-primary w-100">Add department</button></div></form></div>
+</div>
+{% endblock %}

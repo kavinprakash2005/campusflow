@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ title }}</h1><p>{{ subtitle }}</p></div>
+  {% if scope == 'mine' %}<a class="btn btn-primary" href="{{ url_for('reqs.new') }}"><i class="bi bi-plus-lg me-1"></i> New request</a>{% endif %}
+</div>
+{% set ep = {'mine':'reqs.mine','queue':'reqs.queue','department':'reqs.department','principal':'reqs.principal_list','all':'reqs.all_requests'}[scope] %}
+<div class="cf-card">
+  <form class="filter-bar" method="get" action="{{ url_for(ep) }}">
+    <div class="f grow"><label for="q">Search</label><input class="form-control" id="q" name="q" value="{{ args.get('q','') }}" placeholder="ID, title or name" maxlength="60"></div>
+    <div class="f"><label for="type">Type</label><select class="form-select" id="type" name="type"><option value="">All types</option>{% for t in opts.types %}<option value="{{ t.code }}" {{ 'selected' if args.get('type') == t.code }}>{{ t.name }}</option>{% endfor %}</select></div>
+    {% if scope != 'queue' %}<div class="f"><label for="status">Status</label><select class="form-select" id="status" name="status"><option value="">All statuses</option>{% for s in opts.statuses %}<option value="{{ s }}" {{ 'selected' if args.get('status') == s }}>{{ s|title }}</option>{% endfor %}</select></div>{% endif %}
+    {% if scope in ('all', 'principal') %}<div class="f"><label for="dept">Department</label><select class="form-select" id="dept" name="dept"><option value="">All</option>{% for d in opts.depts %}<option value="{{ d.code }}" {{ 'selected' if args.get('dept') == d.code }}>{{ d.code }}</option>{% endfor %}</select></div>{% endif %}
+    <div class="f"><label for="from">From</label><input class="form-control" type="date" id="from" name="from" value="{{ args.get('from','') }}"></div>
+    <div class="f"><label for="to">To</label><input class="form-control" type="date" id="to" name="to" value="{{ args.get('to','') }}"></div>
+    <div class="d-flex gap-2"><button class="btn btn-primary btn-sm"><i class="bi bi-funnel me-1"></i> Filter</button>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for(ep) }}">Reset</a></div>
+  </form>
+  {{ ui.request_table(rows, requester=(scope != 'mine'), dept=(scope in ('all','principal')), empty_text='No requests match your filters.') }}
+  {{ ui.pager(pg, ep, args) }}
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}HOD dashboard{% endblock %}
+{% block content %}
+<section class="welcome mb-4">
+  <h1>{{ g.user.dept_name }}</h1>
+  <p>Department workspace for {{ g.user.full_name }} · {{ faculty_count }} faculty · {{ student_count }} students.
+    {% if pending %}<b>{{ pending }}</b> request{{ '' if pending == 1 else 's' }} are waiting for your decision.{% endif %}</p>
+  <div class="mt-3 d-flex gap-2 flex-wrap">
+    <a class="btn btn-light btn-sm" href="{{ url_for('reqs.queue') }}"><i class="bi bi-inbox me-1"></i> Pending queue</a>
+    <a class="btn btn-sm text-white border border-light border-opacity-50" href="{{ url_for('reports.index') }}">Department reports</a>
+  </div>
+</section>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">{{ ui.stat('Pending my decision', pending, 'bi-inbox', 'amber', href=url_for('reqs.queue')) }}</div>
+  <div class="col-6 col-xl-3">{{ ui.stat('Department requests', dept_counts.total, 'bi-diagram-3', 'indigo', href=url_for('reqs.department')) }}</div>
+  <div class="col-6 col-xl-3">{{ ui.stat('Approved / forwarded by me', approved_month, 'bi-check2-circle', 'green', 'this month') }}</div>
+  <div class="col-6 col-xl-3">{{ ui.stat('Rejected in dept.', dept_counts.rejected, 'bi-x-circle', 'red', href=url_for('reqs.department', status='rejected')) }}</div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="cf-card mb-4"><div class="card-head"><h2>Pending approval queue</h2><a class="btn btn-sm btn-soft" href="{{ url_for('reqs.queue') }}">View all</a></div>
+      {{ ui.request_table(queue, requester=True, empty_text='The queue is empty. Nice work!') }}</div>
+    <div class="row g-4">
+      <div class="col-md-6"><div class="cf-card h-100"><div class="card-head"><h3>Requests by type</h3></div><div class="card-body">{{ ui.hbars(types_chart) }}</div></div></div>
+      <div class="col-md-6"><div class="cf-card h-100"><div class="card-head"><h3>Last 6 months</h3></div><div class="card-body">{{ ui.vbars(trend) }}</div></div></div>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="cf-card mb-4"><div class="card-head"><h3>Department status</h3></div><div class="card-body">{{ ui.donut(donut) }}</div></div>
+    <div class="cf-card mb-4"><div class="card-head"><h3>My recent decisions</h3></div><div class="card-body py-2">{{ ui.decision_list(decisions) }}</div></div>
+    <div class="cf-card"><div class="card-head"><h3>My own requests</h3><a class="btn btn-sm btn-soft" href="{{ url_for('reqs.new') }}">New</a></div>
+      <div class="card-body small d-flex justify-content-between"><span>Total <b>{{ mine.total }}</b></span><span>Pending <b>{{ mine.pending }}</b></span><span>Approved <b>{{ mine.approved }}</b></span></div></div>
+  </div>
+</div>
+{% endblock %}

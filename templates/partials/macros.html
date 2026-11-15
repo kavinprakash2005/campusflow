@@ -1,0 +1,137 @@
+{# ---------- reusable UI macros ---------- #}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro status(r) -%}
+  <span class="st st-{{ r.status }}">{{ status_text(r) }}</span>
+{%- endmacro %}
+
+{% macro avatar(name, size='') -%}
+  <span class="cf-avatar {{ size }}" aria-hidden="true">{{ name|initials }}</span>
+{%- endmacro %}
+
+{% macro stat(label, value, icon, tone='indigo', sub='', href=None) -%}
+  {% if href %}<a class="cf-card cf-stat" href="{{ href }}">{% else %}<div class="cf-card cf-stat">{% endif %}
+    <span class="ico tone-{{ tone }}"><i class="bi {{ icon }}"></i></span>
+    <span><span class="val d-block">{{ value }}</span><span class="lbl d-block">{{ label }}</span>
+    {% if sub %}<span class="sub d-block">{{ sub }}</span>{% endif %}</span>
+  {% if href %}</a>{% else %}</div>{% endif %}
+{%- endmacro %}
+
+{% macro empty(icon, title, text='') -%}
+  <div class="empty"><div class="big"><i class="bi {{ icon }}"></i></div><h3>{{ title }}</h3>
+  {% if text %}<p class="mb-3">{{ text }}</p>{% endif %}{{ caller() if caller else '' }}</div>
+{%- endmacro %}
+
+{% macro field_error(errors, name) -%}
+  {% if errors and errors.get(name) %}<div class="invalid-feedback d-block">{{ errors[name] }}</div>{% endif %}
+{%- endmacro %}
+
+{% macro pager(pg, endpoint, args) -%}
+  {% if pg.total %}
+  <div class="cf-pager">
+    <span>Showing page {{ pg.page }} of {{ pg.pages }} · {{ pg.total }} record{{ '' if pg.total == 1 else 's' }}</span>
+    {% if pg.pages > 1 %}
+    <nav class="pages" aria-label="Pagination">
+      {% set base = args.to_dict() if args.to_dict is defined else args %}
+      {% if pg.page > 1 %}<a href="{{ url_for(endpoint, **dict(base, page=pg.page-1)) }}" aria-label="Previous page"><i class="bi bi-chevron-left"></i></a>
+      {% else %}<span class="p off"><i class="bi bi-chevron-left"></i></span>{% endif %}
+      {% for n in range([1, pg.page-2]|max, [pg.pages, pg.page+2]|min + 1) %}
+        {% if n == pg.page %}<span class="p cur" aria-current="page">{{ n }}</span>
+        {% else %}<a href="{{ url_for(endpoint, **dict(base, page=n)) }}">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if pg.page < pg.pages %}<a href="{{ url_for(endpoint, **dict(base, page=pg.page+1)) }}" aria-label="Next page"><i class="bi bi-chevron-right"></i></a>
+      {% else %}<span class="p off"><i class="bi bi-chevron-right"></i></span>{% endif %}
+    </nav>
+    {% endif %}
+  </div>
+  {% endif %}
+{%- endmacro %}
+
+{# Requests table. cols: set of optional columns {'requester','dept'} #}
+{% macro request_table(rows, requester=False, dept=False, empty_text='No requests to show.') -%}
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="cf-table stack">
+      <thead><tr><th>Request</th>{% if requester %}<th>Requester</th>{% endif %}{% if dept %}<th>Dept</th>{% endif %}<th>Dates</th><th>Status</th><th>Submitted</th><th></th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>
+            <div class="cell-flex"><span class="type-ico"><i class="bi {{ r.type_icon }}"></i></span>
+              <div><div class="main text-truncate">{% if r.masked %}<i class="bi bi-lock-fill me-1 text-muted"></i>{% endif %}{{ r.title }}</div>
+              <div class="sub"><span class="uid">{{ r.request_uid }}</span> · {{ r.type_name }}</div></div></div>
+          </td>
+          {% if requester %}<td data-label="Requester"><div class="cell-flex">{{ avatar(r.requester_name, 'sm') }}<div><div class="main">{{ r.requester_name }}</div><div class="sub text-capitalize">{{ r.requester_role }}</div></div></div></td>{% endif %}
+          {% if dept %}<td data-label="Dept">{{ r.dept_code or '—' }}</td>{% endif %}
+          <td data-label="Dates" class="num">{% if r.start_date %}{{ r.start_date|fd }}{% if r.end_date and r.end_date != r.start_date %}<div class="sub">to {{ r.end_date|fd }} · {{ r.days }} days</div>{% endif %}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td data-label="Status">{{ status(r) }}</td>
+          <td data-label="Submitted" class="sub num">{{ r.created_at|fdt }}</td>
+          <td class="text-end">{% if r.viewable %}<a class="btn btn-sm btn-soft" href="{{ url_for('reqs.detail', ref=r.id) }}">Open <i class="bi bi-arrow-right-short"></i></a>{% else %}<span class="chip lock" title="Details restricted"><i class="bi bi-lock-fill"></i> Restricted</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}{% call empty('bi-inbox', empty_text) %}{% endcall %}{% endif %}
+{%- endmacro %}
+
+{# donut: items = [(label, value, colour)] #}
+{% macro donut(items, centre_label='requests') -%}
+  {% set total = items|sum(attribute=1) %}
+  {% if total %}
+  <div class="donut-wrap">
+    {% set ns = namespace(acc=0, parts=[]) %}
+    {% for l, v, c in items %}
+      {% set start = ns.acc / total * 100 %}{% set ns.acc = ns.acc + v %}{% set end = ns.acc / total * 100 %}
+      {% set ns.parts = ns.parts + [c ~ ' ' ~ start|round(2) ~ '% ' ~ end|round(2) ~ '%'] %}
+    {% endfor %}
+    <div class="donut" style="background: conic-gradient({{ ns.parts|join(', ') }});" role="img"
+         aria-label="{% for l, v, c in items %}{{ l }} {{ v }}{{ ', ' if not loop.last }}{% endfor %}">
+      <div class="mid"><div><b>{{ total }}</b><span>{{ centre_label }}</span></div></div></div>
+    <ul class="legend">{% for l, v, c in items %}<li><i style="background: {{ c }}"></i>{{ l }}<b>{{ v }}</b></li>{% endfor %}</ul>
+  </div>
+  {% else %}<p class="text-muted mb-0">No data yet.</p>{% endif %}
+{%- endmacro %}
+
+{% macro hbars(items) -%}
+  {% set top = (items|map(attribute=1)|max) if items else 0 %}
+  {% for label, v in items %}
+    <div class="hbar"><div class="row1"><span>{{ label }}</span><b>{{ v }}</b></div>
+    <div class="track"><div class="fill" style="width: {{ (v / top * 100) if top else 0 }}%"></div></div></div>
+  {% else %}<p class="text-muted mb-0">No data yet.</p>{% endfor %}
+{%- endmacro %}
+
+{% macro vbars(items) -%}
+  {% set top = (items|map(attribute=1)|max) if items else 0 %}
+  <div class="vbars" role="img" aria-label="Requests per month">
+    {% for label, v in items %}
+      <div class="c"><b>{{ v }}</b><div class="bar" style="height: {{ (v / top * 78) if top else 0 }}%"></div><span>{{ label }}</span></div>
+    {% endfor %}
+  </div>
+{%- endmacro %}
+
+{% macro stack(d) -%}
+  {% if d.total %}<div class="stack-bar" title="Approved {{ d.approved }} · Pending {{ d.pending }} · Rejected {{ d.rejected }} · Returned {{ d.returned }}">
+    <i style="width: {{ d.approved / d.total * 100 }}%; background: #16a34a"></i><i style="width: {{ d.pending / d.total * 100 }}%; background: #f59e0b"></i>
+    <i style="width: {{ d.returned / d.total * 100 }}%; background: #7c3aed"></i><i style="width: {{ d.rejected / d.total * 100 }}%; background: #dc2626"></i></div>{% endif %}
+{%- endmacro %}
+
+{% macro type_tiles(types) -%}
+  <div class="row g-3">
+    {% for t in types %}
+    <div class="col-6 col-md-4 col-xl-2"><a class="type-tile flex-column text-center justify-content-center" href="{{ url_for('reqs.new', type=t.code) }}">
+      <span class="type-ico mx-auto"><i class="bi {{ t.icon }}"></i></span><b>{{ t.name }}</b></a></div>
+    {% endfor %}
+  </div>
+{%- endmacro %}
+
+{% macro decision_list(items) -%}
+  {% for h in items %}
+    <div class="d-flex align-items-center gap-3 py-2 {{ 'border-top' if not loop.first }}">
+      <span class="type-ico tone-{{ {'approved':'green','rejected':'red','returned':'violet','forwarded':'sky'}.get(h.action,'indigo') }}"><i class="bi {{ {'approved':'bi-check2-circle','rejected':'bi-x-circle','returned':'bi-arrow-return-left','forwarded':'bi-send'}.get(h.action,'bi-dot') }}"></i></span>
+      <div class="flex-grow-1 min-w-0"><div class="main fw-semibold">{{ h.action|title }} · <span class="uid">{{ h.request_uid }}</span></div>
+        <div class="sub text-muted small">{{ h.requester_name }} · {{ h.type_name }}</div></div>
+      <span class="small text-muted text-nowrap">{{ h.created_at|fdt }}</span>
+    </div>
+  {% else %}<p class="text-muted mb-0 p-1">No decisions recorded yet.</p>{% endfor %}
+{%- endmacro %}

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}{{ req.request_uid }}{% endblock %}
+{% set pin_icon = {'submitted':'bi-send','resubmitted':'bi-arrow-repeat','approved':'bi-check-lg','forwarded':'bi-arrow-right','rejected':'bi-x-lg','returned':'bi-arrow-return-left','remark':'bi-chat-left-text','assigned':'bi-person-check','cancelled':'bi-slash-circle'} %}
+{% block content %}
+<a class="text-muted small d-inline-block mb-2" href="javascript:history.back()"><i class="bi bi-arrow-left"></i> Back</a>
+
+{% if submitted and is_owner %}
+<div class="submitted-banner mb-4">
+  <span class="ok"><i class="bi bi-check-lg"></i></span>
+  <div class="flex-grow-1"><div class="fw-semibold text-success">Request submitted successfully</div>
+    <div class="big-id" id="new-id">{{ req.request_uid }}</div>
+    <div class="small text-muted">Keep this ID for reference. You will be notified at every step.</div></div>
+  <button class="btn btn-ghost" type="button" data-copy="{{ req.request_uid }}"><i class="bi bi-clipboard me-1"></i> Copy ID</button>
+</div>
+{% endif %}
+
+<div class="page-head">
+  <div>
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-1"><span class="uid">{{ req.request_uid }}</span>{{ ui.status(req) }}
+      {% if req.is_confidential %}<span class="chip lock"><i class="bi bi-lock-fill"></i> Confidential</span>{% endif %}</div>
+    <h1>{{ req.title if show else 'Confidential request' }}</h1>
+    <p>{{ req.type_name }} · raised by {{ req.requester_name }}{% if req.dept_code %} ({{ req.dept_code }}){% endif %}</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap no-print">
+    <button class="btn btn-ghost btn-sm" type="button" data-print><i class="bi bi-printer me-1"></i> Print</button>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('reqs.print_view', ref=req.id) }}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text me-1"></i> Printable view</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('reqs.pdf', ref=req.id) }}"><i class="bi bi-filetype-pdf me-1"></i> PDF</a>
+    {% if can_certificate %}<a class="btn btn-primary btn-sm" href="{{ url_for('reqs.certificate', ref=req.id) }}"><i class="bi bi-patch-check me-1"></i> Download certificate</a>{% endif %}
+    {% if is_owner and req.status == 'returned' %}<a class="btn btn-primary btn-sm" href="{{ url_for('reqs.edit', ref=req.id) }}"><i class="bi bi-pencil-square me-1"></i> Edit &amp; resubmit</a>{% endif %}
+    {% if is_owner and req.status in ('pending', 'returned') %}
+      <form method="post" action="{{ url_for('reqs.cancel', ref=req.id) }}" data-confirm="Cancel this request? This cannot be undone.">{{ ui.csrf() }}<button class="btn btn-outline-danger btn-sm"><i class="bi bi-slash-circle me-1"></i> Cancel request</button></form>
+    {% endif %}
+  </div>
+</div>
+
+{% if is_owner and req.status == 'returned' %}
+  {% set last_ret = (history|selectattr('action','equalto','returned')|list|last) %}
+  <div class="alert alert-warning d-flex gap-3"><i class="bi bi-arrow-return-left fs-4"></i><div><b>A reviewer asked for clarification.</b>
+    {% if last_ret %}<div class="mt-1" style="white-space:pre-line">“{{ last_ret.remark }}” — {{ last_ret.actor_name }}</div>{% endif %}
+    <div class="small mt-1">Update the request and resubmit it to continue the approval.</div></div></div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="cf-card mb-4">
+      <div class="card-head"><h2>Approval progress</h2><span class="text-muted small">Step {{ [req.current_step, 1]|max if req.status == 'pending' else steps|length }} of {{ steps|length }}</span></div>
+      <div class="card-body">
+        <div class="stepper">
+          <div class="s done"><div class="dot"><i class="bi bi-send"></i></div><div class="t">Submitted</div><div class="u">{{ req.requester_name }}</div><span class="st st-approved">Done</span></div>
+          {% for s in steps %}
+            {% set cls = {'approved':'done','pending':'now','rejected':'bad','returned':'ret'}.get(s.status, '') %}
+            <div class="s {{ cls }}"><div class="dot"><i class="bi {{ {'approved':'bi-check-lg','pending':'bi-hourglass-split','rejected':'bi-x-lg','returned':'bi-arrow-return-left'}.get(s.status, 'bi-three-dots') }}"></i></div>
+              <div class="t">{{ STEP_LABEL[s.step_role] }}</div><div class="u">{{ s.assigned_name or 'Role based' }}</div>
+              <span class="st st-{{ s.status }}">{{ {'approved':'Approved','pending':'In review','rejected':'Rejected','returned':'Returned','waiting':'Waiting','skipped':'Skipped'}[s.status] }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="cf-card mb-4">
+      <div class="card-head"><h2>Request details</h2></div>
+      <div class="card-body">
+        {% if not show %}
+          <div class="masked"><i class="bi bi-lock-fill me-2"></i><b>Confidential.</b> The reason, description and attachments are visible only to the requester and the reviewer currently holding this request.</div>
+          <dl class="kv mt-3"><dt>Type</dt><dd>{{ req.type_name }}</dd>
+            {% if req.start_date %}<dt>Dates</dt><dd>{{ req.start_date|fd }}{% if req.end_date != req.start_date %} → {{ req.end_date|fd }} ({{ req.days }} days){% endif %}</dd>{% endif %}
+            <dt>Submitted</dt><dd>{{ req.created_at|fdt }}</dd></dl>
+        {% else %}
+        <dl class="kv">
+          <dt>Request ID</dt><dd><span class="uid">{{ req.request_uid }}</span></dd>
+          <dt>Type</dt><dd>{{ req.type_name }}</dd>
+          <dt>Title</dt><dd>{{ req.title }}</dd>
+          {% for label, value in fields %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}
+          {% if req.start_date %}<dt>{{ 'Date' if req.start_date == req.end_date else 'Dates' }}</dt><dd>{{ req.start_date|fd }}{% if req.end_date != req.start_date %} → {{ req.end_date|fd }} <span class="chip indigo ms-1">{{ req.days }} day{{ '' if req.days == 1 else 's' }}</span>{% endif %}</dd>{% endif %}
+          <dt>Reason</dt><dd>{{ req.reason }}</dd>
+          {% if req.description %}<dt>Description</dt><dd style="white-space:pre-line">{{ req.description }}</dd>{% endif %}
+        </dl>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if attachments %}
+    <div class="cf-card mb-4"><div class="card-head"><h2>Attachments</h2></div><div class="card-body d-grid gap-2">
+      {% for a in attachments %}<a class="attach" href="{{ url_for('reqs.attachment', aid=a.id) }}"><span class="type-ico"><i class="bi bi-paperclip"></i></span>
+        <div class="flex-grow-1"><div class="fw-semibold">{{ a.original_name }}</div><div class="small text-muted">{{ (a.size_bytes / 1024)|round(1) }} KB · {{ a.created_at|fdt }}</div></div><i class="bi bi-download"></i></a>{% endfor %}
+    </div></div>
+    {% endif %}
+
+    <div class="cf-card">
+      <div class="card-head"><h2>Approval timeline &amp; remarks</h2><span class="text-muted small">{{ history|length }} event{{ '' if history|length == 1 else 's' }}</span></div>
+      <div class="card-body">
+        <ul class="tl">
+          {% for h in history|reverse %}
+            <li><span class="pin {{ h.action }}"><i class="bi {{ pin_icon.get(h.action, 'bi-dot') }}"></i></span>
+              <div class="fw-semibold">{{ {'submitted':'Request submitted','resubmitted':'Resubmitted after clarification','approved':'Approved','forwarded':'Forwarded to the Principal','rejected':'Rejected','returned':'Returned for clarification','remark':'Remark added','assigned':'Reviewer assigned','cancelled':'Cancelled by requester'}.get(h.action, h.action|title) }}
+                {% if h.step_role and h.action not in ('submitted','cancelled') %}<span class="chip ms-1">{{ STEP_LABEL[h.step_role] }}</span>{% endif %}</div>
+              <div class="when">{{ h.actor_name }} · {{ h.actor_role|title }} · {{ h.created_at|fdt }}</div>
+              {% if h.remark %}{% if show or h.actor_id == g.user.id %}<div class="remark">{{ h.remark }}</div>{% else %}<div class="remark text-muted"><i class="bi bi-lock-fill me-1"></i>Remark hidden (confidential)</div>{% endif %}{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    {% if my_step %}
+    <div class="cf-card review-box mb-4">
+      <div class="card-head"><h3><i class="bi bi-clipboard-check me-2 text-primary"></i>Your decision</h3><span class="chip indigo">{{ STEP_LABEL[my_step.step_role] }} stage</span></div>
+      <form class="card-body" method="post" action="{{ url_for('reqs.act', ref=req.id) }}">
+        {{ ui.csrf() }}
+        <label class="form-label" for="remark">Remark <span class="text-muted fw-normal">(required to reject or return)</span></label>
+        <textarea class="form-control mb-3" id="remark" name="remark" maxlength="1000" rows="4" placeholder="Visible to the requester and later reviewers"></textarea>
+        <div class="d-grid gap-2">
+          <button class="btn btn-primary" name="action" value="approve"><i class="bi bi-check-circle me-1"></i> {{ 'Approve' if actions.final else 'Approve & forward' }}</button>
+          {% if actions.forward %}<button class="btn btn-navy" name="action" value="forward"><i class="bi bi-send me-1"></i> Forward to Principal</button>{% endif %}
+          {% if actions.return_ %}<button class="btn btn-outline-primary" name="action" value="return"><i class="bi bi-arrow-return-left me-1"></i> Return for clarification</button>{% endif %}
+          <button class="btn btn-outline-danger" name="action" value="reject"><i class="bi bi-x-circle me-1"></i> Reject</button>
+          <button class="btn btn-ghost" name="action" value="remark"><i class="bi bi-chat-left-text me-1"></i> Add remark only</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if faculty_choices %}
+    <div class="cf-card mb-4"><div class="card-head"><h3><i class="bi bi-person-check me-2"></i>Assign faculty reviewer</h3></div>
+      <form class="card-body" method="post" action="{{ url_for('reqs.assign', ref=req.id) }}">{{ ui.csrf() }}
+        <select class="form-select mb-2" name="faculty_id" required aria-label="Faculty reviewer"><option value="">Select faculty…</option>{% for f in faculty_choices %}<option value="{{ f.id }}">{{ f.full_name }}</option>{% endfor %}</select>
+        <input class="form-control mb-2" name="remark" maxlength="300" placeholder="Note for the reviewer (optional)">
+        <button class="btn btn-soft w-100">Assign &amp; notify</button>
+        <div class="form-text mt-2">The faculty member reviews first; the request then returns to you.</div></form></div>
+    {% endif %}
+
+    <div class="cf-card mb-4"><div class="card-head"><h3>Requester</h3></div><div class="card-body">
+      <div class="d-flex align-items-center gap-3 mb-3">{{ ui.avatar(req.requester_name, 'lg') }}<div><div class="fw-semibold">{{ req.requester_name }}</div>
+        <div class="small text-muted">{{ req.requester_cid }}</div><span class="chip mt-1 text-capitalize">{{ req.requester_role }}</span></div></div>
+      <dl class="kv" style="grid-template-columns:110px 1fr"><dt>Department</dt><dd>{{ req.dept_name or '—' }}</dd><dt>Submitted</dt><dd>{{ req.created_at|fdt }}</dd>
+        <dt>Last update</dt><dd>{{ req.updated_at|fdt }}</dd>{% if req.completed_at %}<dt>Completed</dt><dd>{{ req.completed_at|fdt }}</dd>{% endif %}</dl>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

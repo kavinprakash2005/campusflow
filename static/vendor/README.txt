@@ -1,0 +1,1 @@
+Optional offline assets: set ASSET_MODE=local and place Bootstrap 5.3 dist files in vendor/bootstrap/ (bootstrap.min.css, bootstrap.bundle.min.js) and Bootstrap Icons in vendor/icons/ (bootstrap-icons.min.css, fonts/). Default is CDN.

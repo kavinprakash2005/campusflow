@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}System activity{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>System activity</h1><p>Immutable audit trail of sign-ins, decisions, access attempts and configuration changes.</p></div></div>
+<div class="cf-card">
+  <form class="filter-bar" method="get">
+    <div class="f grow"><label for="q">Search</label><input class="form-control" id="q" name="q" value="{{ args.get('q','') }}" maxlength="60" placeholder="User, entity or details"></div>
+    <div class="f"><label for="action">Action</label><select class="form-select" id="action" name="action"><option value="">All</option>{% for a in actions %}<option value="{{ a }}" {{ 'selected' if args.get('action') == a }}>{{ a }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="from">From</label><input class="form-control" type="date" id="from" name="from" value="{{ args.get('from','') }}"></div>
+    <div class="f"><label for="to">To</label><input class="form-control" type="date" id="to" name="to" value="{{ args.get('to','') }}"></div>
+    <div class="d-flex gap-2"><button class="btn btn-primary btn-sm">Filter</button><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.activity') }}">Reset</a></div>
+  </form>
+  <div class="table-responsive"><table class="cf-table stack"><thead><tr><th>When</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th><th>IP</th></tr></thead><tbody>
+  {% for a in rows %}<tr><td class="sub num">{{ a.created_at|fdt }}</td><td data-label="User">{{ a.actor or 'Anonymous' }}{% if a.actor_role %}<div class="sub text-capitalize">{{ a.actor_role }}</div>{% endif %}</td>
+    <td data-label="Action"><span class="chip">{{ a.action }}</span></td><td data-label="Entity" class="sub">{{ a.entity or '' }} {{ a.entity_id or '' }}</td><td class="sub" data-label="Details">{{ a.details or '' }}</td><td class="sub" data-label="IP">{{ a.ip_address or '' }}</td></tr>
+  {% else %}<tr><td colspan="6">{% call ui.empty('bi-activity', 'No activity matches') %}{% endcall %}</td></tr>{% endfor %}</tbody></table></div>
+  {{ ui.pager(pg, 'admin.activity', args) }}
+</div>
+{% endblock %}

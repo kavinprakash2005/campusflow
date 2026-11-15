@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}{{ 'Edit & resubmit' if editing else 'New request' }}{% endblock %}
+{% macro field(f, values, errors) %}
+  {% set v = values.get(f.name, '') %}
+  <div class="col-md-{{ 12 if f.type == 'textarea' else 6 }}">
+    <label class="form-label {{ 'req' if f.required }}" for="f-{{ f.name }}">{{ f.label }}</label>
+    {% if f.type == 'select' %}
+      <select class="form-select {{ 'is-invalid' if errors.get(f.name) }}" id="f-{{ f.name }}" name="{{ f.name }}" {{ 'required' if f.required }}>
+        <option value="">Select…</option>{% for o in f.options %}<option value="{{ o }}" {{ 'selected' if v == o }}>{{ o }}</option>{% endfor %}</select>
+    {% elif f.type == 'number' %}
+      <input class="form-control {{ 'is-invalid' if errors.get(f.name) }}" type="number" id="f-{{ f.name }}" name="{{ f.name }}" value="{{ v }}" min="{{ f.min }}" max="{{ f.max }}" {{ 'required' if f.required }}>
+    {% elif f.type == 'time' %}
+      <input class="form-control {{ 'is-invalid' if errors.get(f.name) }}" type="time" id="f-{{ f.name }}" name="{{ f.name }}" value="{{ v }}" {{ 'required' if f.required }}>
+    {% else %}
+      <input class="form-control {{ 'is-invalid' if errors.get(f.name) }}" type="text" id="f-{{ f.name }}" name="{{ f.name }}" value="{{ v }}" maxlength="{{ f.get('max', 120) }}" {{ 'required' if f.required }}>
+    {% endif %}
+    {{ ui.field_error(errors, f.name) }}
+  </div>
+{% endmacro %}
+{% block content %}
+{% set sel = (types|selectattr('code', 'equalto', selected)|list|first) if selected else none %}
+{% set mode = sel.spec.dates if sel else '' %}
+<div class="page-head">
+  <div><h1>{{ 'Edit & resubmit request' if editing else 'New request' }}</h1>
+    <p>{% if editing %}<span class="uid">{{ editing.request_uid }}</span> was returned for clarification. Update the details and resubmit.{% else %}Pick a type – the form adapts to what that request needs.{% endif %}</p></div>
+  <a class="btn btn-ghost" href="{{ url_for('reqs.detail', ref=editing.id) if editing else url_for('reqs.mine') }}"><i class="bi bi-x-lg me-1"></i> Cancel</a>
+</div>
+
+{% if editing %}
+  {% set last = (editing.id|string) %}
+{% endif %}
+<form method="post" enctype="multipart/form-data" data-request-form action="{{ url_for('reqs.edit', ref=editing.id) if editing else url_for('reqs.create') }}">
+  {{ ui.csrf() }}
+  {% if errors %}<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle me-2"></i>Please fix the highlighted fields and submit again.</div>{% endif %}
+
+  <div class="cf-card mb-4">
+    <div class="card-head"><h2><span class="badge text-bg-primary rounded-circle me-2">1</span>Request type</h2></div>
+    <div class="card-body"><div class="row g-3">
+      {% for t in types %}
+        <div class="col-6 col-md-4 col-xl-2 type-pick">
+          <label class="d-block h-100"><input type="radio" name="type" value="{{ t.code }}" data-dates="{{ t.spec.dates }}" {{ 'checked' if selected == t.code }} {{ 'disabled' if editing and selected != t.code }} required>
+            <span class="type-tile flex-column text-center justify-content-center"><span class="type-ico mx-auto"><i class="bi {{ t.icon }}"></i></span><b>{{ t.name }}</b></span></label></div>
+      {% endfor %}
+    </div>
+    {% if editing %}<input type="hidden" name="type" value="{{ selected }}">{% endif %}
+    {{ ui.field_error(errors, 'type') }}
+    <p class="text-muted mt-3 mb-0" data-type-hint {{ 'hidden' if selected }}><i class="bi bi-arrow-up me-1"></i>Choose a request type to continue.</p>
+    </div>
+  </div>
+
+  <div data-common {{ 'hidden' if not selected }}>
+    <div class="cf-card mb-4">
+      <div class="card-head"><h2><span class="badge text-bg-primary rounded-circle me-2">2</span>Details</h2></div>
+      <div class="card-body"><div class="row g-3">
+        <div class="col-12"><label class="form-label req" for="title">Title</label>
+          <input class="form-control {{ 'is-invalid' if errors.get('title') }}" id="title" name="title" value="{{ values.get('title','') }}" required minlength="5" maxlength="150" placeholder="A short, clear summary">
+          {{ ui.field_error(errors, 'title') }}</div>
+        <div class="col-12"><label class="form-label req" for="reason">Reason</label>
+          <input class="form-control {{ 'is-invalid' if errors.get('reason') }}" id="reason" name="reason" value="{{ values.get('reason','') }}" required minlength="5" maxlength="255" placeholder="One line explaining why">
+          {{ ui.field_error(errors, 'reason') }}</div>
+
+        {# request-type specific fields #}
+        {% for t in types %}
+          <div class="col-12" data-type-group="{{ t.code }}" {{ 'hidden' if selected != t.code }}>
+            {% if t.spec.fields %}<div class="row g-3">{% for f in t.spec.fields %}{{ field(f, values, errors) }}{% endfor %}</div>{% endif %}
+          </div>
+        {% endfor %}
+
+        {# dates – range / single / none depending on the type #}
+        <div class="col-12" data-dates="range" {{ 'hidden' if mode != 'range' }}><div class="row g-3">
+          <div class="col-md-4"><label class="form-label req" for="start_date">From date</label>
+            <input class="form-control {{ 'is-invalid' if errors.get('start_date') }}" type="date" id="start_date" name="start_date" value="{{ values.get('start_date') or '' }}" required {{ 'disabled' if mode != 'range' }}>{{ ui.field_error(errors, 'start_date') }}</div>
+          <div class="col-md-4"><label class="form-label req" for="end_date">To date</label>
+            <input class="form-control {{ 'is-invalid' if errors.get('end_date') }}" type="date" id="end_date" name="end_date" value="{{ values.get('end_date') or '' }}" required {{ 'disabled' if mode != 'range' }}>{{ ui.field_error(errors, 'end_date') }}</div>
+          <div class="col-md-4 d-flex align-items-end"><span data-days class="chip indigo"></span></div></div></div>
+        <div class="col-12" data-dates="single" {{ 'hidden' if mode != 'single' }}><div class="row g-3">
+          <div class="col-md-4"><label class="form-label req" for="start_date_s">Date</label>
+            <input class="form-control {{ 'is-invalid' if errors.get('start_date') }}" type="date" id="start_date_s" name="start_date" value="{{ values.get('start_date') or '' }}" required {{ 'disabled' if mode != 'single' }}>{{ ui.field_error(errors, 'start_date') }}</div></div></div>
+        <div class="col-12" data-dates="none" {{ 'hidden' if mode != 'none' }}></div>
+
+        <div class="col-12"><label class="form-label" for="description">Description <span class="text-muted fw-normal">(optional)</span></label>
+          <textarea class="form-control {{ 'is-invalid' if errors.get('description') }}" id="description" name="description" maxlength="2000" data-counter="desc-count" placeholder="Add any context a reviewer should know">{{ values.get('description','') or '' }}</textarea>
+          <div class="d-flex justify-content-between">{{ ui.field_error(errors, 'description') }}<span class="form-text ms-auto" id="desc-count"></span></div></div>
+      </div></div>
+    </div>
+
+    <div class="cf-card mb-4">
+      <div class="card-head"><h2><span class="badge text-bg-primary rounded-circle me-2">3</span>Attachment &amp; privacy</h2></div>
+      <div class="card-body"><div class="row g-3">
+        <div class="col-md-7"><label class="form-label" for="attachment">Supporting document <span class="text-muted fw-normal">(optional)</span></label>
+          <input class="form-control {{ 'is-invalid' if errors.get('attachment') }}" type="file" id="attachment" name="attachment" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+          <div class="form-text">PDF, PNG, JPG, DOC or DOCX · up to 5 MB. Contents are verified on upload.</div>{{ ui.field_error(errors, 'attachment') }}</div>
+        <div class="col-md-5 d-flex align-items-center"><div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="is_confidential" name="is_confidential" {{ 'checked' if values.get('is_confidential') in ('on', 1, True) }}>
+          <label class="form-check-label" for="is_confidential"><b>Mark as confidential</b><span class="d-block small text-muted">Only the reviewer currently holding the request can read the details.</span></label></div></div>
+      </div></div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+      <a class="btn btn-ghost" href="{{ url_for('reqs.detail', ref=editing.id) if editing else url_for('reqs.mine') }}">Cancel</a>
+      <button class="btn btn-primary px-4" type="submit" data-submit data-busy="Submitting…"><i class="bi bi-send me-1"></i> {{ 'Resubmit request' if editing else 'Submit request' }}</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

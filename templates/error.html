@@ -1,0 +1,12 @@
+{% extends ('base.html' if g.user else 'base_bare.html') %}
+{% block title %}{{ title }}{% endblock %}
+{% macro body_inner() %}
+  <div class="err-wrap"><div>
+    <div class="code">{{ code }}</div>
+    <h1 class="h3 mt-2">{{ title }}</h1>
+    <p class="text-muted mx-auto" style="max-width:440px">{{ message }}</p>
+    <a class="btn btn-primary mt-2" href="{{ url_for('auth.index') }}"><i class="bi bi-house me-1"></i> Back to home</a>
+  </div></div>
+{% endmacro %}
+{% block content %}{{ body_inner() }}{% endblock %}
+{% block body %}{% if g.user %}{{ super() }}{% else %}<main id="main">{{ body_inner() }}</main>{% endif %}{% endblock %}

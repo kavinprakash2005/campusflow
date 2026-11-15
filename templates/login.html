@@ -1,0 +1,56 @@
+{% extends "base_bare.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}Sign in{% endblock %}
+{% block body_class %}login-body{% endblock %}
+{% block body %}
+<main class="lg-screen" id="main">
+  <div class="lg-overlay"></div>
+
+  <header class="lg-top">
+    <img class="lg-logo" src="{{ url_for('static', filename='img/peclogo12.png') }}" alt="{{ college_name }} logo" onerror="this.style.display='none'">
+    <div>
+      <div class="lg-college">{{ college_name }}</div>
+      <div class="lg-sub">Unified Digital Request &amp; Approval Portal</div>
+    </div>
+  </header>
+
+  <section class="lg-card" aria-labelledby="lg-title">
+    <div class="lg-card-head">
+      <span class="lg-badge"><i class="bi bi-shield-lock"></i></span>
+      <h1 id="lg-title">Sign in to CampusFlow</h1>
+      <p>Use your college email or ID</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}{% for cat, msg in messages %}
+      <div class="alert alert-{{ cat if cat in ('success','danger','warning','info') else 'info' }}" role="alert">{{ msg }}</div>{% endfor %}{% endwith %}
+    {% if errors.form %}<div class="alert alert-danger d-flex gap-2 align-items-start" role="alert"><i class="bi bi-exclamation-octagon"></i><div>{{ errors.form }}</div></div>{% endif %}
+
+    <form method="post" action="{{ url_for('auth.login', next=request.args.get('next')) }}" id="login-form" autocomplete="on">
+      {{ ui.csrf() }}
+      <div class="lg-field">
+        <label for="identifier">College email or ID</label>
+        <div class="lg-input"><i class="bi bi-person"></i>
+          <input id="identifier" name="identifier" value="{{ ident }}" autocomplete="username" autofocus required maxlength="120" placeholder="name@college.edu or 21CSE001"></div>
+        {{ ui.field_error(errors, 'identifier') }}
+      </div>
+      <div class="lg-field">
+        <label for="password">Password</label>
+        <div class="lg-input"><i class="bi bi-lock"></i>
+          <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Enter your password">
+          <button class="lg-eye" type="button" data-toggle-password="password" aria-label="Show password" aria-pressed="false"><i class="bi bi-eye"></i></button></div>
+        {{ ui.field_error(errors, 'password') }}
+      </div>
+      <button class="lg-btn" type="submit" data-busy="Signing in…"><i class="bi bi-box-arrow-in-right me-1"></i> Sign in</button>
+    </form>
+    <p class="lg-help"><i class="bi bi-info-circle me-1"></i>Forgot your password? Contact the college administrator.</p>
+
+    {% if demo %}
+    
+   
+  
+    {% endif %}
+  </section>
+
+  <footer class="lg-foot">© {{ now_year }} {{ college_name }} · All rights reserved</footer>
+</main>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}{{ 'Edit user' if editing else 'Add user' }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ 'Edit ' ~ editing.full_name if editing else 'Add user' }}</h1><p>Students need a department and (optionally) a faculty advisor, who reviews their requests first.</p></div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.users') }}">Back</a></div>
+<form class="cf-card" method="post" action="{{ url_for('admin.user_form', uid=editing.id) if editing else url_for('admin.user_form') }}">
+  {{ ui.csrf() }}
+  <div class="card-body"><div class="row g-3">
+    <div class="col-md-6"><label class="form-label req" for="full_name">Full name</label><input class="form-control {{ 'is-invalid' if errors.full_name }}" id="full_name" name="full_name" value="{{ values.get('full_name','') }}" required maxlength="120">{{ ui.field_error(errors,'full_name') }}</div>
+    <div class="col-md-6"><label class="form-label req" for="college_id">College ID</label><input class="form-control {{ 'is-invalid' if errors.college_id }}" id="college_id" name="college_id" value="{{ values.get('college_id','') }}" required maxlength="30">{{ ui.field_error(errors,'college_id') }}</div>
+    <div class="col-md-6"><label class="form-label req" for="email">College email</label><input class="form-control {{ 'is-invalid' if errors.email }}" type="email" id="email" name="email" value="{{ values.get('email','') }}" required maxlength="120">{{ ui.field_error(errors,'email') }}</div>
+    <div class="col-md-6"><label class="form-label" for="phone">Phone</label><input class="form-control {{ 'is-invalid' if errors.phone }}" id="phone" name="phone" value="{{ values.get('phone','') or '' }}" maxlength="20">{{ ui.field_error(errors,'phone') }}</div>
+    {% set cur_role = values.get('role') %}
+    <div class="col-md-4"><label class="form-label req" for="role">Role</label><select class="form-select {{ 'is-invalid' if errors.role }}" id="role" name="role" required><option value="">Select…</option>{% for r in roles %}<option value="{{ r.code }}" {{ 'selected' if cur_role == r.code }}>{{ r.name }}</option>{% endfor %}</select>{{ ui.field_error(errors,'role') }}</div>
+    <div class="col-md-4"><label class="form-label" for="department_id">Department</label><select class="form-select {{ 'is-invalid' if errors.department_id }}" id="department_id" name="department_id"><option value="">— None —</option>{% for d in depts %}<option value="{{ d.id }}" {{ 'selected' if values.get('department_id')|string == d.id|string }}>{{ d.code }} – {{ d.name }}</option>{% endfor %}</select>{{ ui.field_error(errors,'department_id') }}</div>
+    <div class="col-md-4"><label class="form-label" for="designation">Designation / class</label><input class="form-control" id="designation" name="designation" value="{{ values.get('designation','') or '' }}" maxlength="80"></div>
+    <div class="col-md-6"><label class="form-label" for="advisor_id">Faculty advisor <span class="text-muted fw-normal">(students only)</span></label><select class="form-select {{ 'is-invalid' if errors.advisor_id }}" id="advisor_id" name="advisor_id"><option value="">— None —</option>{% for f in faculty %}<option value="{{ f.id }}" {{ 'selected' if values.get('advisor_id')|string == f.id|string }}>{{ f.full_name }} ({{ f.dept_code }})</option>{% endfor %}</select>{{ ui.field_error(errors,'advisor_id') }}</div>
+    <div class="col-md-6"><label class="form-label {{ '' if editing else 'req' }}" for="password">{{ 'Reset password (leave blank to keep)' if editing else 'Initial password' }}</label>
+      <div class="input-group"><input class="form-control {{ 'is-invalid' if errors.password }}" type="password" id="password" name="password" autocomplete="new-password" maxlength="128" {{ '' if editing else 'required' }}><button class="btn btn-ghost" type="button" data-toggle-password="password" aria-label="Show password"><i class="bi bi-eye"></i></button></div>
+      <div class="form-text">{{ rule }}</div>{{ ui.field_error(errors,'password') }}</div>
+    <div class="col-12"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="is_active" name="is_active" {{ 'checked' if values.get('is_active') in (1, True, 'on') }}><label class="form-check-label" for="is_active">Account active</label></div></div>
+  </div></div>
+  <div class="card-foot d-flex justify-content-end gap-2"><a class="btn btn-ghost" href="{{ url_for('admin.users') }}">Cancel</a><button class="btn btn-primary" data-busy="Saving…">{{ 'Save changes' if editing else 'Create user' }}</button></div>
+</form>
+{% endblock %}

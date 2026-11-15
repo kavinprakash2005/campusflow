@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}Approval workflow{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Approval workflow</h1><p>Choose which stages review each request type, per requester role. Stages always run in order: Faculty advisor → HOD → Principal.</p></div></div>
+<div class="alert alert-info small"><i class="bi bi-info-circle me-1"></i>Changes apply to <b>new</b> requests; requests already in progress keep their route. The Principal stage can be limited to long requests via “minimum days”. Students without an advisor skip the faculty stage.</div>
+{% for item in data %}{% set t = item.type %}
+<div class="cf-card mb-4" id="type-{{ t.code }}">
+  <div class="card-head"><div class="cell-flex"><span class="type-ico"><i class="bi {{ t.icon }}"></i></span><div><h2>{{ t.name }}</h2><div class="small text-muted">{{ t.description }}</div></div></div>
+    <form method="post" action="{{ url_for('admin.workflow_rules') }}">{{ ui.csrf() }}<input type="hidden" name="type_id" value="{{ t.id }}"><input type="hidden" name="toggle_active" value="1">
+      <button class="btn btn-sm {{ 'btn-ghost' if t.is_active else 'btn-soft' }}">{{ 'Disable type' if t.is_active else 'Enable type' }}</button></form></div>
+  <form class="card-body" method="post" action="{{ url_for('admin.workflow_rules') }}">{{ ui.csrf() }}<input type="hidden" name="type_id" value="{{ t.id }}">
+    {% for r in item.roles %}
+    <div class="row g-3 align-items-center {{ 'pt-3 mt-3 border-top' if not loop.first }}">
+      <div class="col-md-3"><b class="text-capitalize">{{ r.role }}</b> requests</div>
+      <div class="col-md-6 d-flex flex-wrap gap-2">
+        {% for st in r.stages %}<label class="stage-chip {{ 'on' if st in r.on }}"><input class="form-check-input mt-0" type="checkbox" name="s_{{ r.role }}_{{ st }}" {{ 'checked' if st in r.on }}> {{ STEP_LABEL[st] }}</label>{% endfor %}</div>
+      <div class="col-md-3">{% if 'principal' in r.stages %}<div class="input-group input-group-sm"><span class="input-group-text">Principal if ≥</span><input class="form-control" type="number" min="0" max="365" name="min_{{ r.role }}" value="{{ r.min_days }}" aria-label="Minimum days for Principal approval"><span class="input-group-text">days</span></div>{% endif %}</div>
+    </div>{% endfor %}
+    <div class="text-end mt-3"><button class="btn btn-primary btn-sm" data-busy="Saving…">Save {{ t.name }} workflow</button></div>
+  </form>
+</div>{% endfor %}
+{% endblock %}

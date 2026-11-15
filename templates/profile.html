@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>My profile</h1><p>Your account details and security settings.</p></div></div>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="cf-card"><div class="card-body">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <span class="cf-avatar lg">{{ g.user.full_name|initials }}</span>
+        <div><h2 class="h4 mb-1">{{ g.user.full_name }}</h2><span class="chip indigo">{{ g.user.role_name }}</span>
+          {% if g.user.dept_name %}<span class="chip ms-1">{{ g.user.dept_code }}</span>{% endif %}</div>
+      </div>
+      <dl class="kv">
+        <dt>College ID</dt><dd>{{ g.user.college_id }}</dd>
+        <dt>Email</dt><dd>{{ g.user.email }}</dd>
+        <dt>Department</dt><dd>{{ g.user.dept_name or '—' }}</dd>
+        <dt>Designation</dt><dd>{{ g.user.designation or '—' }}</dd>
+        <dt>Phone</dt><dd>{{ g.user.phone or '—' }}</dd>
+        {% if advisor %}<dt>Faculty advisor</dt><dd>{{ advisor.full_name }}<div class="small text-muted">{{ advisor.email }}</div></dd>{% endif %}
+        <dt>Last sign-in</dt><dd>{{ g.user.last_login|fdt }}</dd>
+      </dl>
+    </div></div>
+    <div class="cf-card mt-4"><div class="card-head"><h3>What my role can do</h3></div>
+      <div class="card-body"><ul class="list-unstyled mb-0 small">
+        {% for p in perms %}<li class="py-1"><i class="bi bi-check-circle-fill text-success me-2"></i>{{ p.description }}</li>{% endfor %}
+      </ul></div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="cf-card"><div class="card-head"><h3><i class="bi bi-shield-lock me-2"></i>Change password</h3></div>
+      <form class="card-body" method="post" action="{{ url_for('auth.change_password') }}">
+        {{ ui.csrf() }}
+        <div class="mb-3"><label class="form-label req" for="current">Current password</label>
+          <div class="input-group"><input class="form-control" type="password" id="current" name="current" required autocomplete="current-password" maxlength="128">
+          <button class="btn btn-ghost" type="button" data-toggle-password="current" aria-label="Show password"><i class="bi bi-eye"></i></button></div></div>
+        <div class="mb-3"><label class="form-label req" for="new">New password</label>
+          <div class="input-group"><input class="form-control" type="password" id="new" name="new" required minlength="8" autocomplete="new-password" maxlength="128">
+          <button class="btn btn-ghost" type="button" data-toggle-password="new" aria-label="Show password"><i class="bi bi-eye"></i></button></div>
+          <div class="form-text">{{ rule }}</div></div>
+        <div class="mb-4"><label class="form-label req" for="confirm">Confirm new password</label>
+          <input class="form-control" type="password" id="confirm" name="confirm" required minlength="8" autocomplete="new-password" maxlength="128"></div>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-check2 me-1"></i> Update password</button>
+      </form></div>
+  </div>
+</div>
+{% endblock %}

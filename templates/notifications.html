@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Notifications</h1><p>Status updates and review requests, newest first.</p></div>
+  <div class="d-flex gap-2">
+    <div class="btn-group" role="group" aria-label="Filter">
+      <a class="btn btn-sm {{ 'btn-primary' if not only_unread else 'btn-ghost' }}" href="{{ url_for('notif.index') }}">All</a>
+      <a class="btn btn-sm {{ 'btn-primary' if only_unread else 'btn-ghost' }}" href="{{ url_for('notif.index', filter='unread') }}">Unread</a>
+    </div>
+    <form method="post" action="{{ url_for('notif.read_all') }}">{{ ui.csrf() }}<button class="btn btn-sm btn-soft"><i class="bi bi-check2-all me-1"></i> Mark all read</button></form>
+  </div>
+</div>
+<div class="cf-card">
+  {% for n in rows %}
+    <a class="notif-item {{ 'unread' if not n.is_read }}" href="{{ url_for('notif.open_', nid=n.id) }}">
+      <span class="ico"><i class="bi {{ 'bi-bell-fill' if not n.is_read else 'bi-bell' }}"></i></span>
+      <div class="flex-grow-1"><b>{{ n.title }}</b>{% if not n.is_read %} <span class="chip indigo ms-1">New</span>{% endif %}<p>{{ n.message }}</p></div>
+      <span class="small text-muted text-nowrap">{{ n.created_at|fdt }}</span>
+    </a>
+  {% else %}{% call ui.empty('bi-bell-slash', 'No notifications', 'You will be notified here when a request changes status.') %}{% endcall %}{% endfor %}
+  {{ ui.pager(pg, 'notif.index', request.args) }}
+</div>
+{% endblock %}

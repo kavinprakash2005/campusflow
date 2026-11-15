@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "partials/macros.html" as ui with context %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ 'College reports' if scope == 'all' else 'Department reports' }}</h1>
+    <p>{{ 'Aggregate statistics across the college. Request content is never shown here.' if scope == 'all' else g.user.dept_name ~ ' – statistics and exports.' }}</p></div>
+  <a class="btn btn-primary" href="{{ url_for('reports.export', **args.to_dict()) }}"><i class="bi bi-download me-1"></i> Export CSV</a>
+</div>
+<div class="cf-card mb-4">
+  <form class="filter-bar" method="get" action="{{ url_for('reports.index') }}">
+    <div class="f"><label for="type">Type</label><select class="form-select" id="type" name="type"><option value="">All types</option>{% for t in opts.types %}<option value="{{ t.code }}" {{ 'selected' if args.get('type') == t.code }}>{{ t.name }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="status">Status</label><select class="form-select" id="status" name="status"><option value="">All</option>{% for s in opts.statuses %}<option value="{{ s }}" {{ 'selected' if args.get('status') == s }}>{{ s|title }}</option>{% endfor %}</select></div>
+    {% if scope == 'all' %}<div class="f"><label for="dept">Department</label><select class="form-select" id="dept" name="dept"><option value="">All</option>{% for d in opts.depts %}<option value="{{ d.code }}" {{ 'selected' if args.get('dept') == d.code }}>{{ d.code }}</option>{% endfor %}</select></div>{% endif %}
+    <div class="f"><label for="role">Raised by</label><select class="form-select" id="role" name="role"><option value="">Anyone</option>{% for r in ['student','faculty','hod'] %}<option value="{{ r }}" {{ 'selected' if args.get('role') == r }}>{{ r|upper if r == 'hod' else r|title }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="from">From</label><input class="form-control" type="date" id="from" name="from" value="{{ args.get('from','') }}"></div>
+    <div class="f"><label for="to">To</label><input class="form-control" type="date" id="to" name="to" value="{{ args.get('to','') }}"></div>
+    <div class="d-flex gap-2"><button class="btn btn-primary btn-sm">Apply</button><a class="btn btn-ghost btn-sm" href="{{ url_for('reports.index') }}">Reset</a></div>
+  </form>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">{{ ui.stat('Requests', counts.total, 'bi-collection', 'indigo') }}</div>
+  <div class="col-6 col-xl-3">{{ ui.stat('Approval rate', (approval_rate ~ '%') if approval_rate is not none else '—', 'bi-graph-up-arrow', 'green', 'of decided requests') }}</div>
+  <div class="col-6 col-xl-3">{{ ui.stat('Pending', counts.pending, 'bi-hourglass-split', 'amber') }}</div>
+  <div class="col-6 col-xl-3">{{ ui.stat('Avg. turnaround', (turnaround ~ ' days') if turnaround is not none else '—', 'bi-speedometer2', 'sky') }}</div>
+</div>
+<div class="row g-4 mb-4">
+  <div class="col-lg-4"><div class="cf-card h-100"><div class="card-head"><h3>Status</h3></div><div class="card-body">{{ ui.donut(donut) }}</div></div></div>
+  <div class="col-lg-4"><div class="cf-card h-100"><div class="card-head"><h3>By type</h3></div><div class="card-body">{{ ui.hbars(types_chart) }}</div></div></div>
+  <div class="col-lg-4"><div class="cf-card h-100"><div class="card-head"><h3>Monthly volume</h3></div><div class="card-body">{{ ui.vbars(trend) }}</div></div></div>
+</div>
+{% if depts %}
+<div class="cf-card mb-4"><div class="card-head"><h2>By department</h2></div><div class="table-responsive"><table class="cf-table">
+  <thead><tr><th>Department</th><th class="text-end">Total</th><th class="text-end">Pending</th><th class="text-end">Approved</th><th class="text-end">Rejected</th><th class="text-end">Returned</th><th style="min-width:160px">Mix</th></tr></thead>
+  <tbody>{% for code, d in depts %}<tr><td class="main">{{ code }}</td><td class="num text-end">{{ d.total }}</td><td class="num text-end">{{ d.pending }}</td><td class="num text-end">{{ d.approved }}</td><td class="num text-end">{{ d.rejected }}</td><td class="num text-end">{{ d.returned }}</td><td>{{ ui.stack(d) }}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endif %}
+<div class="cf-card"><div class="card-head"><h2>Matching requests</h2></div>
+  {{ ui.request_table(rows, requester=True, dept=(scope == 'all'), empty_text='No requests match these filters.') }}
+  {{ ui.pager(pg, 'reports.index', args) }}</div>
+{% endblock %}
